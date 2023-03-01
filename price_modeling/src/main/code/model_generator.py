@@ -1,5 +1,5 @@
-from price_forecaster.src.main.code.abstract_historical_data_fetcher import AbstractHistoricalDataFetcher
-from price_forecaster.src.main.code.dataset_generator import DatasetGenerator
+from price_modeling.src.main.code.abstract_historical_data_fetcher import AbstractHistoricalDataFetcher
+from price_modeling.src.main.code.dataset_generator import DatasetGenerator
 import pickle
 
 from utils.src.main.code.logging.logger import Logger
