@@ -7,11 +7,11 @@ from price_forecaster.src.main.code.file_based_historical_data_fetcher import Fi
 
 class TestFileBasedHistoricalDataFetcher():
     def setup(self):
-        self.data_fetcher = FileBasedHistoricalDataFetcher()
+        file_path = os.path.dirname(__file__) + "/../resources/spx_minutely_data.txt"
+        self.data_fetcher = FileBasedHistoricalDataFetcher(file_path)
 
     def test_get_dataset_returns_properly_formatted_dataset(self):
-        file_path = os.path.dirname(__file__) + "/../resources/spx_minutely_data.txt"
-        dataframe = self.data_fetcher.get_historical_data(file_path)
+        dataframe = self.data_fetcher.get_historical_data()
         assert isinstance(dataframe, pd.DataFrame)
         assert dataframe.index.name == "Datetime"
         assert dataframe.iloc[0]["Open"] == 4071.79
