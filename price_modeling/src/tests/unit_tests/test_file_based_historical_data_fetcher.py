@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from price_forecaster.src.main.code.file_based_historical_data_fetcher import FileBasedHistoricalDataFetcher
+from price_modeling.src.main.code.file_based_historical_data_fetcher import FileBasedHistoricalDataFetcher
 
 
 class TestFileBasedHistoricalDataFetcher():

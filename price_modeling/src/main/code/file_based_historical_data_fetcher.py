@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from price_forecaster.src.main.code.abstract_historical_data_fetcher import AbstractHistoricalDataFetcher
+from price_modeling.src.main.code.abstract_historical_data_fetcher import AbstractHistoricalDataFetcher
 
 
 class FileBasedHistoricalDataFetcher(AbstractHistoricalDataFetcher):
