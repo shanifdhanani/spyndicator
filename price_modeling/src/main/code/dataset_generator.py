@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
-
+import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+
+from price_modeling.src.main.code.constants import NameOfColumnForTradingDaysInFuture, LabelName
 
 
 class DatasetGenerator():
@@ -76,6 +78,8 @@ class DatasetGenerator():
                 dataset = dataset_with_labels_for_future
             else:
                 dataset = pd.concat([dataset, dataset_with_labels_for_future])
+        dataset.replace([np.inf, -np.inf], np.nan)
+        dataset.dropna(subset = [LabelName])
         return dataset
 
     def _create_dataset_with_future_percentage_return(self, candidates: pd.DataFrame, trading_days_in_future: float) -> pd.DataFrame:
@@ -90,7 +94,12 @@ class DatasetGenerator():
 
         time_at_prediction = self._get_time_for_prediction_given_timerange_in_future(trading_days_in_future = trading_days_in_future)
         forward_periods_for_percentage_return = self._get_forward_period_for_percentage_return(trading_days_in_future = trading_days_in_future)
-        dataframe_with_labels = candidates.pct_change(-forward_periods_for_percentage_return).between_time(time_at_prediction, time_at_prediction, inclusive = "both")
+        percentage_changes = candidates.pct_change(-forward_periods_for_percentage_return).between_time(time_at_prediction, time_at_prediction, inclusive = "both")
+        percentage_changes[NameOfColumnForTradingDaysInFuture] = trading_days_in_future
+        percentage_changes.rename(columns = {"Close": LabelName}, inplace = True)
+        percentage_changes = percentage_changes[[LabelName, NameOfColumnForTradingDaysInFuture]]
+        percentage_changes.dropna(subset = [LabelName])
+        return percentage_changes
 
     def _get_time_for_prediction_given_timerange_in_future(self, trading_days_in_future: float) -> str:
         """
@@ -119,7 +128,7 @@ class DatasetGenerator():
         """
 
         if trading_days_in_future >= 1.0:
-            return trading_days_in_future * self.RecordsPerDay
+            return int(round(trading_days_in_future * self.RecordsPerDay, 0))
 
         minutes_ahead = trading_days_in_future * self.MinutesInHour * self.HoursInTradingDay
-        return minutes_ahead / self.MinuteFrequencyToSubsample
+        return int(round(minutes_ahead / self.MinuteFrequencyToSubsample, 0))

@@ -22,4 +22,5 @@ class TestDatasetGenerator():
         assert 2 == self.dataset_generator._get_forward_period_for_percentage_return(0.5/6.5)
         assert 4 == self.dataset_generator._get_forward_period_for_percentage_return(1.0/6.5)
         assert 8 == self.dataset_generator._get_forward_period_for_percentage_return(2.0/6.5)
+        assert 24 == self.dataset_generator._get_forward_period_for_percentage_return(6.0 / 6.5)
         assert 27 * 3 == self.dataset_generator._get_forward_period_for_percentage_return(3.0)
