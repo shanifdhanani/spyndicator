@@ -1,19 +1,17 @@
 import os
 import pandas as pd
 
-from price_modeling.src.main.code.dataset_generator import DatasetGenerator
+from price_modeling.src.main.code.file_based_historical_data_fetcher import FileBasedHistoricalDataFetcher
 
 
-class TestDatasetGenerator():
+class TestFileBasedHistoricalDataFetcher():
     def setup(self):
-        self.dataset_generator = DatasetGenerator()
+        file_path = os.path.dirname(__file__) + "/../resources/spx_minutely_data.txt"
+        self.data_fetcher = FileBasedHistoricalDataFetcher(file_path)
 
-    def test_get_time_for_prediction_given_timerange_in_future_returns_correct_time(self):
-        assert "09:30" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(1.0)
-        assert "10:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(6.0 / 6.5)
-        assert "11:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(5.0 / 6.5)
-        assert "12:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(4.0 / 6.5)
-        assert "13:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(3.0 / 6.5)
-        assert "14:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(2.0 / 6.5)
-        assert "15:00" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(1.0 / 6.5)
-        assert "15:30" == self.dataset_generator._get_time_for_prediction_given_timerange_in_future(0.5 / 6.5)
+    def test_get_dataset_returns_properly_formatted_dataset(self):
+        dataframe = self.data_fetcher.get_historical_data()
+        assert isinstance(dataframe, pd.DataFrame)
+        assert dataframe.index.name == "Datetime"
+        assert dataframe.iloc[0]["Open"] == 4071.79
+        assert str(dataframe.index[0]) == '2023-01-27 15:56:00'
