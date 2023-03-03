@@ -16,7 +16,7 @@ class FileBasedHistoricalDataFetcher(AbstractHistoricalDataFetcher):
 
         self.file_path = file_path
 
-    def get_historical_data(self):
+    def get_historical_data(self) -> pd.DataFrame:
         """
         Returns a dataset of OHLC data from the filepath provided
 

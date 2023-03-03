@@ -18,7 +18,7 @@ class ModelGenerator:
         if self.dataset_generator is None:
             self.dataset_generator = DatasetGenerator()
 
-    def build_model(self, saved_model_filepath: str, evaluate: bool = True):
+    def build_model(self, saved_model_filepath: str, evaluate: bool = True) -> object:
         """
         This method is responsible for building the model from the data
 
