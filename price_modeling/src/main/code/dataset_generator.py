@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from price_modeling.src.main.code.constants import NameOfColumnForTradingDaysInFuture, LabelName
+from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes
+from price_modeling.src.main.code.constants.generic_constants import LabelName, CloseColumnName
 
 
 class DatasetGenerator():
@@ -52,11 +53,11 @@ class DatasetGenerator():
         # Here we subsample by minute to reduce the dataset size and all of the duplicative data that tends to exist from one minute to the next
         training_data_candidates = training_data_candidates[training_data_candidates.index.minute % self.MinuteFrequencyToSubsample == 0]
         training_data_candidates = self._construct_dataset_with_labels_from_candidates(candidates = training_data_candidates)
-        training_data = self._add_features_to_base_instances_and_return_data(base_instances = training_data_candidates)
+        training_data = self._add_features_to_base_instances_and_return_data(base_instances = training_data_candidates, source_data = source_data)
 
         if create_evaluation_dataset:
             evaluation_data_candidates = self._construct_dataset_with_labels_from_candidates(candidates = evaluation_data_candidates)
-            evaluation_data = self._add_features_to_base_instances_and_return_data(base_instances = evaluation_data_candidates)
+            evaluation_data = self._add_features_to_base_instances_and_return_data(base_instances = evaluation_data_candidates, source_data = source_data)
 
         return training_data, evaluation_data
 
@@ -96,10 +97,11 @@ class DatasetGenerator():
         forward_periods_for_percentage_return = self._get_forward_period_for_percentage_return(trading_days_in_future = trading_days_in_future)
         percentage_changes = candidates.pct_change(-forward_periods_for_percentage_return).between_time(time_at_prediction, time_at_prediction, inclusive = "both")
         percentage_changes[NameOfColumnForTradingDaysInFuture] = trading_days_in_future
-        percentage_changes.rename(columns = {"Close": LabelName}, inplace = True)
+        percentage_changes.rename(columns = {CloseColumnName: LabelName}, inplace = True)
         percentage_changes = percentage_changes[[LabelName, NameOfColumnForTradingDaysInFuture]]
-        percentage_changes.dropna(subset = [LabelName])
-        return percentage_changes
+        percentage_changes.dropna(subset = [LabelName], inplace = True)
+        percentage_changes = percentage_changes.join(candidates, how = "left")
+        return percentage_changes[[CloseColumnName, NameOfColumnForTradingDaysInFuture, LabelName]]
 
     def _get_time_for_prediction_given_timerange_in_future(self, trading_days_in_future: float) -> str:
         """
@@ -132,3 +134,54 @@ class DatasetGenerator():
 
         minutes_ahead = trading_days_in_future * self.MinutesInHour * self.HoursInTradingDay
         return int(round(minutes_ahead / self.MinuteFrequencyToSubsample, 0))
+
+    def _add_features_to_base_instances_and_return_data(self, base_instances: pd.DataFrame, source_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        This method adds in all of the features that will be used for prediction into the provided dataset
+
+        :param base_instances (obj:`pd.DataFrame`): A dataframe that contains labels and a column for how far in the future that is being predicted
+        :param source_data (obj:`pd.DataFrame`): A dataframe that contains all the original data, useful for matching an instance to its closest closing value
+        :return (obj:`pd.DataFrame`): A dataframe that contains all features and labels
+        """
+
+        def minutes_since_open(row) -> int:
+            start_of_day = row.name # Here, the "name" column is actually the index, wich is the datetime of the record
+            start_of_day = start_of_day.replace(hour = 9, minute = 30)
+            difference = (row.name - start_of_day).total_seconds() / 60 # 60 seconds per minute
+            return difference
+
+        def get_return_since_time(time: str, base_instances: pd.DataFrame, name_of_new_column: str = "Returns") -> pd.DataFrame:
+            prices_at_target_time = source_data.between_time(time, time, inclusive = "both")
+            prices_at_target_time.sort_index(inplace = True)
+            prices_at_target_time = pd.merge_asof(base_instances, prices_at_target_time, left_index = True, right_index = True)
+            prices_at_target_time[name_of_new_column] = prices_at_target_time[CloseColumnName + "_x"] / prices_at_target_time[CloseColumnName + "_y"] - 1.0
+            returns_since_target_time = prices_at_target_time[[name_of_new_column]]
+            return returns_since_target_time
+
+        def get_new_dataset_with_returns_for_specified_time(dataset: pd.DataFrame, new_column_name: str, periods: int, start_time_reset: str, end_time_reset: str) -> pd.DataFrame:
+            dataset[new_column_name] = source_data.pct_change(periods)[CloseColumnName]
+            index = dataset.between_time(start_time_reset, end_time_reset, inclusive = "left").index
+            dataset.loc[index, new_column_name] = 0
+            return dataset
+
+        base_instances.sort_index(inplace = True)
+        dataset = base_instances.sort_index()
+        dataset[Month] = dataset.index.month
+        dataset[Day] = dataset.index.day
+        dataset[DayName] = dataset.index.day_name()
+        dataset[Year] = dataset.index.year
+        dataset[Quarter] = dataset.index.quarter
+        dataset[MinutesSinceOpen] = dataset.apply(minutes_since_open, axis = 1)
+        dataset[IsSameDayClose] = dataset[NameOfColumnForTradingDaysInFuture] <= 1.0
+
+        returns_since_last_close = get_return_since_time("16:00", base_instances, ReturnSinceLastClose)
+        dataset = dataset.join(returns_since_last_close, how = "left")
+        dataset.drop_duplicates(inplace = True)
+
+        returns_since_open = get_return_since_time("09:30", base_instances, ReturnSinceOpen)
+        dataset = dataset.join(returns_since_open, how = "left")
+        dataset.drop_duplicates(inplace = True)
+
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast10Minutes, periods = 10, start_time_reset = "9:30", end_time_reset = "9:40")
+
+        return dataset
