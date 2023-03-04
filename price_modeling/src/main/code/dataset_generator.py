@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes
+from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes, ReturnInLast30Minutes, ReturnInLast1Hour, ReturnInLast2Hours, ReturnInLast3Hours, ReturnInLast4Hours, ReturnInLast5Hours, ReturnInLast6Hours
 from price_modeling.src.main.code.constants.generic_constants import LabelName, CloseColumnName
 
 
@@ -183,5 +183,12 @@ class DatasetGenerator():
         dataset.drop_duplicates(inplace = True)
 
         dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast10Minutes, periods = 10, start_time_reset = "9:30", end_time_reset = "9:40")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast30Minutes, periods = 30, start_time_reset = "9:30", end_time_reset = "10:00")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast1Hour, periods = self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "10:30")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast2Hours, periods = 2 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "11:30")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast3Hours, periods = 3 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "12:30")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast4Hours, periods = 4 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "13:30")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast5Hours, periods = 5 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "14:30")
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast6Hours, periods = 6 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "15:30")
 
         return dataset
