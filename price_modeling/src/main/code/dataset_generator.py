@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes, ReturnInLast30Minutes, ReturnInLast1Hour, ReturnInLast2Hours, ReturnInLast3Hours, ReturnInLast4Hours, ReturnInLast5Hours, ReturnInLast6Hours
+from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes, ReturnInLast30Minutes, ReturnInLast1Hour, ReturnInLast2Hours, ReturnInLast3Hours, ReturnInLast4Hours, ReturnInLast5Hours, ReturnInLast6Hours, ReturnInLast2Days, ReturnInLast3Days, ReturnInLast1Week, ReturnInLast2Weeks, ReturnInLast1Month, ReturnInLast3Months, ReturnInLast6Months, ReturnInLast1Year, ReturnInLast1AndAHalfYears, ReturnInLast2Years, ReturnInLast3Years
 from price_modeling.src.main.code.constants.generic_constants import LabelName, CloseColumnName
 
 
@@ -15,7 +15,10 @@ class DatasetGenerator():
     MinuteFrequencyToSubsample = 15
     HoursInTradingDay = 6.5
     MinutesInHour = 60
-    RecordsPerDay = (MinutesInHour * HoursInTradingDay / MinuteFrequencyToSubsample) + 1
+    TradingDaysInWeek = 5
+    TradingDaysInMonth = 21
+    TradingDaysInYear = 251
+    RecordsPerDay = int((MinutesInHour * HoursInTradingDay / MinuteFrequencyToSubsample) + 1)
     TimeframesInTheFutureInTradingDays = [
         0.5 / HoursInTradingDay, # 3:30 PM
         1.0 / HoursInTradingDay, # 3:00 PM
@@ -50,7 +53,7 @@ class DatasetGenerator():
         else:
             training_data_candidates = source_data
 
-        # Here we subsample by minute to reduce the dataset size and all of the duplicative data that tends to exist from one minute to the next
+        # Here we subsample by minute to reduce the dataset size and all the duplicative data that tends to exist from one minute to the next
         training_data_candidates = training_data_candidates[training_data_candidates.index.minute % self.MinuteFrequencyToSubsample == 0]
         training_data_candidates = self._construct_dataset_with_labels_from_candidates(candidates = training_data_candidates)
         training_data = self._add_features_to_base_instances_and_return_data(base_instances = training_data_candidates, source_data = source_data)
@@ -159,13 +162,16 @@ class DatasetGenerator():
             return returns_since_target_time
 
         def get_new_dataset_with_returns_for_specified_time(dataset: pd.DataFrame, new_column_name: str, periods: int, start_time_reset: str, end_time_reset: str) -> pd.DataFrame:
-            dataset[new_column_name] = source_data.pct_change(periods)[CloseColumnName]
-            index = dataset.between_time(start_time_reset, end_time_reset, inclusive = "left").index
-            dataset.loc[index, new_column_name] = 0
-            return dataset
+            returns = source_data.pct_change(periods)
+            if start_time_reset is not None and end_time_reset is not None:
+                index = returns.between_time(start_time_reset, end_time_reset, inclusive = "left").index
+                returns.loc[index, CloseColumnName] = 0
+            returns[new_column_name] = returns[CloseColumnName]
+            returns = returns[[new_column_name]]
+            return dataset.join(returns, how = "left")
 
         base_instances.sort_index(inplace = True)
-        dataset = base_instances.sort_index()
+        dataset = base_instances
         dataset[Month] = dataset.index.month
         dataset[Day] = dataset.index.day
         dataset[DayName] = dataset.index.day_name()
@@ -191,4 +197,17 @@ class DatasetGenerator():
         dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast5Hours, periods = 5 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "14:30")
         dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast6Hours, periods = 6 * self.MinutesInHour, start_time_reset = "9:30", end_time_reset = "15:30")
 
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast2Days, periods = 2 * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast3Days, periods = 3 * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast1Week, periods = self.TradingDaysInWeek * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast2Weeks, periods = 2 * self.TradingDaysInWeek * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast1Month, periods = self.TradingDaysInMonth * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast3Months, periods = 3 * self.TradingDaysInMonth * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast6Months, periods = 6 * self.TradingDaysInMonth * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast1Year, periods = self.TradingDaysInYear * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast1AndAHalfYears, periods = int(self.TradingDaysInYear * 1.5) * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast2Years, periods = 2 * self.TradingDaysInYear * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+        dataset = get_new_dataset_with_returns_for_specified_time(dataset = dataset, new_column_name = ReturnInLast3Years, periods = 3 * self.TradingDaysInYear * self.RecordsPerDay, start_time_reset = None, end_time_reset = None)
+
+        del dataset[CloseColumnName]
         return dataset
