@@ -5,12 +5,15 @@ from dateutil.relativedelta import relativedelta
 
 from price_modeling.src.main.code.constants.feature_names import Month, Day, DayName, Year, Quarter, MinutesSinceOpen, IsSameDayClose, NameOfColumnForTradingDaysInFuture, ReturnSinceLastClose, ReturnSinceOpen, ReturnInLast10Minutes, ReturnInLast30Minutes, ReturnInLast1Hour, ReturnInLast2Hours, ReturnInLast3Hours, ReturnInLast4Hours, ReturnInLast5Hours, ReturnInLast6Hours, ReturnInLast2Days, ReturnInLast3Days, ReturnInLast1Week, ReturnInLast2Weeks, ReturnInLast1Month, ReturnInLast3Months, ReturnInLast6Months, ReturnInLast1Year, ReturnInLast1AndAHalfYears, ReturnInLast2Years, ReturnInLast3Years
 from price_modeling.src.main.code.constants.generic_constants import LabelName, CloseColumnName
+from utils.src.main.code.logging.logger import Logger
 
 
 class DatasetGenerator():
     """
     This class is responsible for generating a training/evaluation dataset
     """
+
+    logger = Logger.get_logger(__name__)
 
     MinuteFrequencyToSubsample = 15
     HoursInTradingDay = 6.5
@@ -43,6 +46,7 @@ class DatasetGenerator():
         :return (tuple): A training dataset and optional evaluation dataset (or null)
         """
 
+        self.logger.info("Beginning to generate datasets")
         evaluation_data_candidates = None
         evaluation_data = None
 
@@ -62,6 +66,7 @@ class DatasetGenerator():
             evaluation_data_candidates = self._construct_dataset_with_labels_from_candidates(candidates = evaluation_data_candidates)
             evaluation_data = self._add_features_to_base_instances_and_return_data(base_instances = evaluation_data_candidates, source_data = source_data)
 
+        self.logger.info("Datasets generated")
         return training_data, evaluation_data
 
     def _construct_dataset_with_labels_from_candidates(self, candidates: pd.DataFrame) -> pd.DataFrame:

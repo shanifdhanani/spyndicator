@@ -1,0 +1,2 @@
+class ColumnsNotPresentException(Exception):
+    pass
